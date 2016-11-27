@@ -29,10 +29,16 @@ public class TinyMapViewController implements Initializable {
     private Canvas mapCanvas;
     @FXML
     private Pane rootPane;
+    
+    private TinyMapModel mapModel;
+    
     @FXML
     private void loadShapefile(ActionEvent event) {
         System.out.println("You clicked me!");
+        mapModel = new TinyMapModel();
+        mapModel.loadLines();
         clearMapCanvas();
+        drawMapCanvas();
     }
 
     /**
@@ -43,6 +49,14 @@ public class TinyMapViewController implements Initializable {
         gc.setFill(Color.MIDNIGHTBLUE);
         gc.fillRect(0, 0, mapCanvas.getWidth(), mapCanvas.getHeight());
     }   
+
+    private void drawMapCanvas() {
+        mapModel.stream().forEach(polyline -> {
+            GraphicsContext gc = mapCanvas.getGraphicsContext2D();
+            gc.setStroke(Color.LIGHTGREEN);
+            gc.strokePolyline(polyline.getXArray(), polyline.getYArray(), polyline.size());
+        });
+    }
     
     @Override
     public void initialize(URL url, ResourceBundle rb) {
