@@ -22,6 +22,7 @@ public class TinyMapApp extends Application {
         Scene scene = new Scene(root);
         
         stage.setScene(scene);
+        stage.setTitle("Tiny Map Viewer");
         stage.show();
     }
 
