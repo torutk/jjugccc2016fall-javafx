@@ -3,7 +3,9 @@
  */
 package com.torutk.tinymap;
 
+import java.io.File;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.ResourceBundle;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -13,11 +15,13 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Point2D;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.transform.Affine;
+import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 
 /**
@@ -49,15 +53,23 @@ public class TinyMapViewController implements Initializable {
     private TinyMapModel mapModel;
     
     /**
-     * 地図データを読み込む。
+     * ファイル選択ダイアログを表示し、ユーザーが指定したシェープファイルから地図データを読み込む。
      * 
      * @param event 
      */
     @FXML
     private void loadShapefile(ActionEvent event) {
-        System.out.println("You clicked me!");
-        mapModel = new TinyMapModel();
-        mapModel.loadLines();
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("シェープファイルを選択してね");
+        chooser.setInitialDirectory(Paths.get(System.getProperty("user.dir")).toFile());
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Shapefile", "*.shp"));
+        File selected = chooser.showOpenDialog(mapCanvas.getScene().getWindow());
+        mapModel = new TinyMapModel(selected);
+        try {
+            mapModel.loadLines();
+        } catch (TinyMapException ex) {
+            showError("シェープファイルの読み込みでエラーが発生しました。", ex);
+        }
         drawMapCanvas();
     }
 
@@ -76,6 +88,7 @@ public class TinyMapViewController implements Initializable {
      */
     private void drawMapCanvas() {
         clearMapCanvas();
+        if (mapModel == null) return;
         GraphicsContext gc = mapCanvas.getGraphicsContext2D();
         gc.setTransform(mapTransform);
         gc.setStroke(Color.LIGHTGREEN);
@@ -94,7 +107,7 @@ public class TinyMapViewController implements Initializable {
             scaleLabel.setText(String.format("1/%,d", (int) (1 / (newValue.doubleValue() * dotPitchInMeter))));
         });
         // 初期縮尺の設定
-        scaleProperty.set(1 / mapToScale(5_000));
+        scaleProperty.set(1 / mapToScale(200_000_000));
         // ウィンドウサイズの変更に合わせて地図表示用Canvasの大きさを連動
         mapCanvas.widthProperty().bind(rootPane.widthProperty().subtract(120));
         mapCanvas.heightProperty().bind(rootPane.heightProperty());
@@ -131,8 +144,6 @@ public class TinyMapViewController implements Initializable {
         });
     }    
     
-
-
     /**
      * 地図縮尺（例： 1 / 10,000）をAffineのscaleに変換する.
      *
@@ -141,5 +152,12 @@ public class TinyMapViewController implements Initializable {
      */
     double mapToScale(double reduce) {
         return reduce * dotPitchInMeter;
+    }
+    
+    private void showError(String message, Throwable ex) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Tiny Map Viewer Message");
+        alert.setContentText(String.format("%s%n%s", message, ex.getLocalizedMessage()));
+        alert.showAndWait();
     }
 }
