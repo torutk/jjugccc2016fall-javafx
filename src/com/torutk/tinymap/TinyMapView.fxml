@@ -9,8 +9,8 @@
 <AnchorPane id="AnchorPane" fx:id="rootPane" prefHeight="520.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.torutk.tinymap.TinyMapViewController">
     <children>
         <Button fx:id="button" layoutX="241.0" layoutY="161.0" onAction="#loadShapefile" text="読み込み" AnchorPane.bottomAnchor="14.0" AnchorPane.rightAnchor="17.0" />
-        <Label fx:id="scaleLabel" layoutX="241.0" layoutY="14.0" minHeight="16" minWidth="69" text="1:10000000" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="14.0" />
+        <Label fx:id="scaleLabel" alignment="CENTER_RIGHT" layoutX="522.0" layoutY="14.0" minHeight="16" minWidth="69" prefHeight="17.0" prefWidth="114.0" text="1:10000000" AnchorPane.rightAnchor="4.0" AnchorPane.topAnchor="14.0" />
       <Canvas fx:id="mapCanvas" height="200.0" width="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="120.0" AnchorPane.topAnchor="0.0" />
-      <ComboBox fx:id="projectionComboBox" layoutX="239.0" layoutY="47.0" prefHeight="25.0" prefWidth="77.0" AnchorPane.rightAnchor="4.0" AnchorPane.topAnchor="47.0" />
+      <ComboBox fx:id="projectionComboBox" layoutX="239.0" layoutY="47.0" prefHeight="25.0" prefWidth="114.0" AnchorPane.rightAnchor="4.0" AnchorPane.topAnchor="47.0" />
     </children>
 </AnchorPane>

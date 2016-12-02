@@ -3,12 +3,15 @@
  */
 package com.torutk.tinymap;
 
+import com.torutk.tinymap.TinyMapModel.MapProjection;
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ResourceBundle;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -37,7 +40,7 @@ public class TinyMapViewController implements Initializable {
     @FXML
     private Label scaleLabel; // 縮尺表示用ラベル
     @FXML
-    private ComboBox projectionComboBox; // 投影法選択コンボボックス
+    private ComboBox<MapProjection> projectionComboBox; // 投影法選択コンボボックス
     @FXML
     private Canvas mapCanvas; // 地図描画領域
     @FXML
@@ -69,6 +72,10 @@ public class TinyMapViewController implements Initializable {
             return;
         }
         mapModel = new TinyMapModel(selected);
+        MapProjection mapProj = projectionComboBox.getValue();
+        if (mapProj != null) {
+            mapModel.setProjection(mapProj.projection());
+        }
         try {
             mapModel.loadLines();
         } catch (TinyMapException ex) {
@@ -106,6 +113,10 @@ public class TinyMapViewController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        // 投影法コンボボックス
+        ObservableList<MapProjection> list =
+                FXCollections.observableArrayList(MapProjection.values());
+        projectionComboBox.getItems().addAll(list);
         // 実行環境でのドットピッチを計算
         dotPitchInMeter = 1 / Screen.getPrimary().getDpi() * METER_PER_INCH;
         // 拡大率の変更に縮尺ラベルの表示を連動

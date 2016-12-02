@@ -20,6 +20,11 @@ import org.nocrala.tools.gis.data.esri.shapefile.shape.AbstractShape;
 import org.nocrala.tools.gis.data.esri.shapefile.shape.PointData;
 import org.nocrala.tools.gis.data.esri.shapefile.shape.ShapeType;
 import org.nocrala.tools.gis.data.esri.shapefile.shape.shapes.PolylineShape;
+import org.osgeo.proj4j.CRSFactory;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
+import org.osgeo.proj4j.CoordinateTransform;
+import org.osgeo.proj4j.CoordinateTransformFactory;
+import org.osgeo.proj4j.ProjCoordinate;
 
 /**
  *
@@ -29,7 +34,7 @@ public class TinyMapModel {
     private File mapFile;
     private List<TinyMapPolyline> polylines = new ArrayList<>();
     private Function<PointData, Point2D> projection;
-    
+        
     public TinyMapModel(File selected) {
         mapFile = selected;
         projection = p -> new Point2D(p.getX() * 100_000, p.getY() * 100_000); // 1度100kmとした直交座標変換
@@ -98,6 +103,35 @@ public class TinyMapModel {
                 ys[i] = lat;
             }
             polylines.add(new TinyMapPolyline(xs, ys));
+        }
+    }
+
+    public static enum MapProjection {
+        MOLLWEIDE("ESRI:54009"),
+        MERCATOR("ESRI:54004"),
+        ECKERT6("ESRI:54010"),
+        CASSINI("ESRI:54028");
+
+        private CRSFactory crsFactory = new CRSFactory();
+        private CoordinateTransformFactory ctFactory = new CoordinateTransformFactory();
+                
+        private CoordinateReferenceSystem crsWgs84;
+        private CoordinateReferenceSystem crsProjected;
+        private CoordinateTransform transform;
+        
+        private MapProjection(String name) {
+            crsWgs84 = crsFactory.createFromName("EPSG:4326");
+            crsProjected = crsFactory.createFromName(name);
+            transform = ctFactory.createTransform(crsWgs84, crsProjected);
+        }
+        
+        public Function<PointData, Point2D> projection() {
+            return point -> {
+                ProjCoordinate gcsPoint = new ProjCoordinate(point.getX(), point.getY());
+                ProjCoordinate pcsPoint = new ProjCoordinate();
+                pcsPoint = transform.transform(gcsPoint, pcsPoint);
+                return new Point2D(pcsPoint.x, pcsPoint.y);
+            };
         }
     }
 }
