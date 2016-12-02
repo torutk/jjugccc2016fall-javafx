@@ -26,15 +26,26 @@ import org.nocrala.tools.gis.data.esri.shapefile.shape.shapes.PolylineShape;
  * @author Toru Takahashi
  */
 public class TinyMapModel {
+    
+    public static final double R = 6_371_007.181; // m
     private File mapFile;
     private List<TinyMapPolyline> polylines = new ArrayList<>();
     private Function<PointData, Point2D> projection;
-    
+    private Function<PointData, Point2D> sansonProjection = p -> {
+        double y = Math.toRadians(p.getY());
+        double sx = R * Math.toRadians(p.getX()) * Math.cos(y);
+        double sy = R * y;
+        return new Point2D(sx, sy);
+    };
+            
     public TinyMapModel(File selected) {
         mapFile = selected;
-        projection = p -> new Point2D(p.getX() * 100_000, p.getY() * 100_000); // 1度100kmとした直交座標変換
-    }
-
+        // 1度100kmとした直交座標変換
+        //projection = p -> new Point2D(p.getX() * 100_000, p.getY() * 100_000);
+        projection = sansonProjection;
+            
+        }
+                
     public void setProjection(Function<PointData, Point2D> projection) {
         this.projection = projection;
     }
