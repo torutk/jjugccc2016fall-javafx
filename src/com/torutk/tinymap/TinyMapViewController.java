@@ -29,10 +29,11 @@ import javafx.stage.Screen;
  * @author Toru Takahashi
  */
 public class TinyMapViewController implements Initializable {
+
     private static final Affine IDENTITY_TRANSFORM = new Affine(); // 恒等変換（表示消去で使用）
     private static final double METER_PER_INCH = 0.0254; // インチからメートルへの換算値
     private static final double SCALE_RATE = 1.4; // 1段階の拡大縮小比
-    
+
     @FXML
     private Label scaleLabel; // 縮尺表示用ラベル
     @FXML
@@ -41,21 +42,21 @@ public class TinyMapViewController implements Initializable {
     private Canvas mapCanvas; // 地図描画領域
     @FXML
     private Pane rootPane;
-    
+
     private Affine mapTransform = new Affine(); // 地図の拡大縮小スクロールの座標変換
     private DoubleProperty scaleProperty = new SimpleDoubleProperty(1); // 地図の拡大率
     private double dotPitchInMeter; // 実行環境でのドットピッチを保持
-            
+
     private Point2D dragStartPoint; // 平行移動の開始点
     private Point2D mapTranslateAtDragStart; // 平行移動開始時点の地図の座標変換を保持
     private Point2D mapTranslate = new Point2D(0, 0); // 平行移動量
-    
+
     private TinyMapModel mapModel;
-    
+
     /**
      * ファイル選択ダイアログを表示し、ユーザーが指定したシェープファイルから地図データを読み込む。
-     * 
-     * @param event 
+     *
+     * @param event
      */
     @FXML
     private void loadShapefile(ActionEvent event) {
@@ -64,6 +65,9 @@ public class TinyMapViewController implements Initializable {
         chooser.setInitialDirectory(Paths.get(System.getProperty("user.dir")).toFile());
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Shapefile", "*.shp"));
         File selected = chooser.showOpenDialog(mapCanvas.getScene().getWindow());
+        if (selected == null) {
+            return;
+        }
         mapModel = new TinyMapModel(selected);
         try {
             mapModel.loadLines();
@@ -81,14 +85,16 @@ public class TinyMapViewController implements Initializable {
         gc.setTransform(IDENTITY_TRANSFORM);
         gc.setFill(Color.MIDNIGHTBLUE);
         gc.fillRect(0, 0, mapCanvas.getWidth(), mapCanvas.getHeight());
-    }   
+    }
 
     /**
      * 地図の描画
      */
     private void drawMapCanvas() {
         clearMapCanvas();
-        if (mapModel == null) return;
+        if (mapModel == null) {
+            return;
+        }
         GraphicsContext gc = mapCanvas.getGraphicsContext2D();
         gc.setTransform(mapTransform);
         gc.setStroke(Color.LIGHTGREEN);
@@ -97,7 +103,7 @@ public class TinyMapViewController implements Initializable {
             gc.strokePolyline(polyline.getXArray(), polyline.getYArray(), polyline.size());
         });
     }
-    
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         // 実行環境でのドットピッチを計算
@@ -119,7 +125,7 @@ public class TinyMapViewController implements Initializable {
         mapCanvas.setOnScroll(event -> {
             scaleProperty.set(
                     event.getDeltaY() >= 0 ? scaleProperty.get() * SCALE_RATE
-                            : scaleProperty.get() / SCALE_RATE
+                    : scaleProperty.get() / SCALE_RATE
             );
             mapTransform.setToTransform(
                     scaleProperty.get(), 0, mapTranslate.getX(),
@@ -142,8 +148,8 @@ public class TinyMapViewController implements Initializable {
             );
             drawMapCanvas();
         });
-    }    
-    
+    }
+
     /**
      * 地図縮尺（例： 1 / 10,000）をAffineのscaleに変換する.
      *
@@ -153,11 +159,13 @@ public class TinyMapViewController implements Initializable {
     double mapToScale(double reduce) {
         return reduce * dotPitchInMeter;
     }
-    
+
     private void showError(String message, Throwable ex) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Tiny Map Viewer Message");
-        alert.setContentText(String.format("%s%n%s", message, ex.getLocalizedMessage()));
+        String exMessage = (ex.getCause() != null) ? ex.getCause().getLocalizedMessage()
+                : ex.getLocalizedMessage();
+        alert.setContentText(String.format("%s%n%s", message, exMessage));
         alert.showAndWait();
     }
 }
