@@ -134,4 +134,29 @@ public class TinyMapModel {
             };
         }
     }
+
+    private void loadTestPattern2() {
+        for (int lat = 0; lat <= 90; lat += 10) {
+            int length = 18 - lat * 2 / 10;
+            double[] xs = new double[length];
+            double[] ys = new double[length];
+            int lon = 0;
+            for (int i = 0; i < length; i++, lon += 10) {
+                xs[i] = lon;
+                ys[i] = lat;
+            }
+            polylines.add(new TinyMapPolyline(xs, ys));
+        }
+        for (int lon = 0; lon <= 180; lon += 10) {
+            int length = 9 - lon / 2 / 10;
+            double[] xs = new double[length];
+            double[] ys = new double[length];
+            int lat = 0;
+            for (int i = 0; i < length; i++, lat += 10) {
+                xs[i] = lon;
+                ys[i] = lat;
+            }
+            polylines.add(new TinyMapPolyline(xs, ys));
+        }
+    }
 }
