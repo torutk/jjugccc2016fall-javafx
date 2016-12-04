@@ -3,8 +3,11 @@
  */
 package com.torutk.tinymap;
 
+import static java.lang.String.format;
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.event.ActionEvent;
@@ -18,6 +21,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.transform.Affine;
+import javafx.scene.transform.NonInvertibleTransformException;
 import javafx.stage.Screen;
 
 /**
@@ -25,9 +29,11 @@ import javafx.stage.Screen;
  * @author Toru Takahashi
  */
 public class TinyMapViewController implements Initializable {
+    
+    private static final Logger logger = Logger.getLogger(TinyMapViewController.class.getName());
     private static final Affine IDENTITY_TRANSFORM = new Affine(); // 恒等変換（表示消去で使用）
     private static final double METER_PER_INCH = 0.0254; // インチからメートルへの換算値
-    private static final double SCALE_RATE = 1.4; // 1段階の拡大縮小比
+    private static final double SCALE_RATE = 2; // 1段階の拡大縮小比
     
     @FXML
     private Label scaleLabel; // 縮尺表示用ラベル
@@ -41,11 +47,8 @@ public class TinyMapViewController implements Initializable {
     private Affine mapTransform = new Affine(); // 地図の拡大縮小スクロールの座標変換
     private DoubleProperty scaleProperty = new SimpleDoubleProperty(1); // 地図の拡大率
     private double dotPitchInMeter; // 実行環境でのドットピッチを保持
-            
-    private Point2D dragStartPoint; // 平行移動の開始点
-    private Point2D mapTranslateAtDragStart; // 平行移動開始時点の地図の座標変換を保持
-    private Point2D mapTranslate = new Point2D(0, 0); // 平行移動量
-    
+    private Point2D prevDragPoint; // 平行移動の開始点
+
     private TinyMapModel mapModel;
     
     /**
@@ -75,7 +78,11 @@ public class TinyMapViewController implements Initializable {
      * 地図の描画
      */
     private void drawMapCanvas() {
+        logger.info(mapTransform.toString());
         clearMapCanvas();
+        if (mapModel == null) {
+            return;
+        }
         GraphicsContext gc = mapCanvas.getGraphicsContext2D();
         gc.setTransform(mapTransform);
         gc.setStroke(Color.LIGHTGREEN);
@@ -103,30 +110,21 @@ public class TinyMapViewController implements Initializable {
         // 地図の拡大縮小平行移動の座標変換初期値
         mapTransform = new Affine(scaleProperty.get(), 0, 0, 0, -scaleProperty.get(), 0);
         // マウスホイールで拡大縮小
-        mapCanvas.setOnScroll(event -> {
-            scaleProperty.set(
-                    event.getDeltaY() >= 0 ? scaleProperty.get() * SCALE_RATE
-                            : scaleProperty.get() / SCALE_RATE
-            );
-            mapTransform.setToTransform(
-                    scaleProperty.get(), 0, mapTranslate.getX(),
-                    0, -scaleProperty.get(), mapTranslate.getY()
-            );
-            drawMapCanvas();
-        });
+        mapCanvas.setOnScroll(event -> 
+            zoom(event.getDeltaY() >= 0 ? scaleProperty.get() * SCALE_RATE : scaleProperty.get() / SCALE_RATE)
+        );
+
         // ドラッグで平行移動するための開始場所保持
         mapCanvas.setOnMousePressed(event -> {
-            dragStartPoint = new Point2D(event.getSceneX(), event.getSceneY());
-            mapTranslateAtDragStart = mapTranslate;
+            prevDragPoint = new Point2D(event.getSceneX(), event.getSceneY());
         });
         // ドラッグで平行移動
         mapCanvas.setOnMouseDragged(event -> {
             Point2D dragPoint = new Point2D(event.getSceneX(), event.getSceneY());
-            mapTranslate = mapTranslateAtDragStart.add(dragPoint.subtract(dragStartPoint));
-            mapTransform.setToTransform(
-                    scaleProperty.get(), 0f, mapTranslate.getX(),
-                    0f, -scaleProperty.get(), mapTranslate.getY()
-            );
+            Point2D translate = dragPoint.subtract(prevDragPoint);
+            prevDragPoint = dragPoint;
+            mapTransform.setTx(mapTransform.getTx() + translate.getX());
+            mapTransform.setTy(mapTransform.getTy() + translate.getY());
             drawMapCanvas();
         });
     }    
@@ -142,4 +140,57 @@ public class TinyMapViewController implements Initializable {
     double mapToScale(double reduce) {
         return reduce * dotPitchInMeter;
     }
+
+    /**
+     * mapCanvasの画面中心位置の地図座標を計算
+     */
+    private Point2D getCenterOfDisplayInMap() throws NonInvertibleTransformException {
+        return mapTransform.inverseTransform(getCenterOfDisplay());
+    }
+
+    /**
+     * mapCanvasの中心画面座標を返却する。
+     * 
+     * @return mapCanvasの中心画面座標
+     */
+    private Point2D getCenterOfDisplay() {
+        return new Point2D(mapCanvas.getWidth() / 2, mapCanvas.getHeight() / 2);
+    }
+    
+    /**
+     * 地図表示の拡大・縮小処理。
+     * <p>
+     * 画面の真ん中を中心に拡大・縮小表示する。
+     * <p>
+     * 次の座標変換を行う。
+     * <ul>
+     * <li> Y軸の正負変換
+     * <li> スケール変換
+     * <li> 並行移動
+     * </ul>
+     * これらを合成すると次のAffine行列となる。
+     * <pre>
+     * | scale      0  画面の中心画素(x) - (画面の中心に位置する地図座標(x) * scale) | 
+     * |     0  scale  画面の中心画素(y) + (画面の中心に位置する地図座標(y) * scale) |
+     * </pre>
+     * 
+     * @param scale 拡大率
+     */
+    private void zoom(double scale) {
+        try {
+            scaleProperty.set(scale);
+            Point2D centerOfDisplayInMap = getCenterOfDisplayInMap();
+            Point2D centerOfDisplay = getCenterOfDisplay();
+            double tx = centerOfDisplay.getX() - centerOfDisplayInMap.getX() * scale;
+            double ty = centerOfDisplay.getY() + centerOfDisplayInMap.getY() * scale;
+            mapTransform.setToTransform(
+                    scaleProperty.get(), 0, tx,
+                    0, -scaleProperty.get(), ty
+            );
+            drawMapCanvas();
+        } catch (NonInvertibleTransformException ex) {
+            Logger.getLogger(TinyMapViewController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
 }
