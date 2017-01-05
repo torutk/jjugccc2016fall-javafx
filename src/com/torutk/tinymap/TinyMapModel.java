@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import org.nocrala.tools.gis.data.esri.shapefile.ShapeFileReader;
@@ -31,6 +32,7 @@ import org.osgeo.proj4j.ProjCoordinate;
  * @author Toru Takahashi
  */
 public class TinyMapModel {
+    private static final Logger logger = Logger.getLogger(TinyMapModel.class.getName());
     private File mapFile;
     private List<TinyMapPolyline> polylines = new ArrayList<>();
     private Function<PointData, Point2D> projection;
@@ -69,6 +71,7 @@ public class TinyMapModel {
         } catch (IOException | InvalidShapeFileException ex) {
             throw new TinyMapException("シェープファイル読み込み時に例外発生", ex);
         }
+        logger.info(String.format("Read %d polylines from %s%n", polylines.size(), mapFile.getName()));
     }
         
     TinyMapPolyline createMapPolylineFrom(PolylineShape shape, int part) {
