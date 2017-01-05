@@ -133,10 +133,16 @@ public class TinyMapViewController implements Initializable {
         mapCanvas.heightProperty().addListener(event -> drawMapCanvas());
         // 地図の拡大縮小平行移動の座標変換初期値
         mapTransform = new Affine(scaleProperty.get(), 0, 0, 0, -scaleProperty.get(), 0);
-        // マウスホイールで拡大縮小
-        mapCanvas.setOnScroll(event -> 
-            zoom(event.getDeltaY() >= 0 ? scaleProperty.get() * SCALE_RATE : scaleProperty.get() / SCALE_RATE)
-        );
+        // マウスホイールで拡大縮小（タッチパネル対応）
+        mapCanvas.setOnScroll(event -> {
+            if (event.getTouchCount() != 0 || event.isInertia()) {
+                logger.finer("This is not pinch or wheel event, so skip zoom.");
+                return;
+            }
+            zoom(event.getDeltaY());
+        });
+        // タッチパネルで拡大縮小
+        mapCanvas.setOnZoom(event -> zoom(event.getZoomFactor() - 1d));
         // ドラッグで平行移動するための開始場所保持
         mapCanvas.setOnMousePressed(event -> {
             prevDragPoint = new Point2D(event.getSceneX(), event.getSceneY());
@@ -204,9 +210,11 @@ public class TinyMapViewController implements Initializable {
      * |     0  scale  画面の中心画素(y) + (画面の中心に位置する地図座標(y) * scale) |
      * </pre>
      * 
-     * @param scale 拡大率
+     * @param scaleFactor 拡大か縮小かを正負で指定（符号のみ使用し、値は使用しない）
      */
-    private void zoom(double scale) {
+    private void zoom(double scaleFactor) {
+        double scale = scaleFactor >= 0 ? scaleProperty.get() * SCALE_RATE : scaleProperty.get() / SCALE_RATE;
+        logger.info(String.format("scale factor = %f, calculated scale = %f%n", scaleFactor, scale));
         try {
             scaleProperty.set(scale);
             Point2D centerOfDisplayInMap = getCenterOfDisplayInMap();
